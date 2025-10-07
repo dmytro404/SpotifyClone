@@ -1,19 +1,22 @@
-﻿<!DOCTYPE html>
+﻿@using System.Security.Claims
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - SpotifyClone</title>
+    <title>@ViewData["Title"] - ASP-32</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/SpotifyClone.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ASP-32.styles.css" asp-append-version="true" />
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">SpotifyClone</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ASP_32</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -27,6 +30,37 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
+                    @if (Context.User.Identity?.IsAuthenticated ?? false)
+                    {
+                        String name = Context.User.Claims
+
+                        .First(c => c.Type == ClaimTypes.Name).Value;
+
+                        bool isAdmin = Context.User.Claims
+                        .FirstOrDefault(c => c.Type == ClaimTypes.Role)
+                        ?.Value == "Admin";
+
+                        <div>
+                            @if (isAdmin)
+                            {
+                                <a asp-action="Admin"><i class="bi bi-speedometer2"></i></a>
+                            }
+                            <b title="@name">@(name.ToUpper()[0])</b>
+
+                            <a href="?logout" class="btn btn-outline-secondary">
+                                <i class="bi bi-box-arrow-right "></i>
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <!-- Button trigger modal -->
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#authModal">
+                                <i class="bi bi-door-open"></i>
+                            </button>
+                        </div>
+                    }
                 </div>
             </div>
         </nav>
@@ -39,12 +73,54 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2025 - SpotifyClone - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2025 - ASP_32 - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+
+    <!-- Modal -->
+    <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="authModalLabel">Вхід у систему</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="auth-form">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" id="user-login"><i class="bi bi-key"></i></span>
+                            <input name="user-login" type="text" class="form-control" placeholder="Логін" aria-label="User Login" aria-describedby="user-login">
+                        </div>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text" id="user-password"><i class="bi bi-lock"></i></span>
+                            <input name="user-password" type="password" class="form-control" placeholder="Пароль" aria-label="User Password" aria-describedby="user-password">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="submit" form="auth-form" class="btn btn-primary">Вхід</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
+
+@*
+    Скорочені форми посилань (локальні посилання)
+    дано: ми знаходимось на сторінці https://localhost/Home/Privacy
+    Які повні посилання у скорочених форм:
+    href               url
+    "Page"             https://localhost/Home/Page
+    "/Page"            https://localhost/Page
+    "//Page"           https://Page
+    "#Page"            https://localhost/Home/Privacy#Page
+    "?Page"            https://localhost/Home/Privacy?Page
+*@

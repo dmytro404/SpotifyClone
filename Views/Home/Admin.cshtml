@@ -1,0 +1,70 @@
+﻿@model SpotifyClone.Models.Home.AdminGroupFormModel
+@{
+    ViewData["Title"] = "Admin Page";
+}
+
+
+<div class="text-center">
+    <h1 class="display-4">Dashboard (панель адміністратора)</h1>
+</div>
+
+<div class="border m-3 p-3">
+    <h2>Додати жанр</h2>
+
+    <form asp-controller="Genre" asp-action="AddGenre" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col">
+                <div class="input-group mb-1 mt-2">
+                    <span class="input-group-text" id="genre-name-addon">
+                        <i class="bi bi-bag-check"></i>
+                    </span>
+                    <input name="genre-name" type="text" class="form-control"
+                           placeholder="Назва" aria-label="Назва" aria-describedby="genre-name-addon" />
+                </div>
+                <span class="text-danger" asp-validation-for="Name"></span>
+            </div>
+
+            <div class="col">
+                <div class="input-group mb-1 mt-2">
+                    <span class="input-group-text" id="genre-description-addon">
+                        <i class="bi bi-card-text"></i>
+                    </span>
+                    <input name="genre-description" type="text" class="form-control"
+                           placeholder="Опис" aria-label="Опис" aria-describedby="genre-description-addon" />
+                </div>
+                <span class="text-danger" asp-validation-for="Description"></span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="input-group mb-1 mt-2">
+                    <span class="input-group-text" id="genre-slug-addon">
+                        <i class="bi bi-link"></i>
+                    </span>
+                    <input name="genre-slug" type="text" class="form-control"
+                           placeholder="Посилання" aria-label="Посилання" aria-describedby="genre-slug-addon" />
+                </div>
+                <span class="text-danger" asp-validation-for="Slug"></span>
+            </div>
+
+            <div class="col">
+                <div class="input-group mb-1 mt-2">
+                    <label class="input-group-text" for="inputGroupFile02">
+                        <i class="bi bi-cloud-upload"></i>
+                    </label>
+                    <input name="genre-image" type="file" class="form-control" id="inputGroupFile02" />
+                </div>
+                <span class="text-danger" asp-validation-for="Image"></span>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-outline-primary mt-3">Додати</button>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
