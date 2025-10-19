@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using SpotifyClone.Data;
 using SpotifyClone.Middleware.Auth;
 using SpotifyClone.Services.Auth;
@@ -40,6 +41,11 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(@"D:\STORAGE\ASP32"),
+    RequestPath = "/storage"
+});
 app.UseRouting();
 app.UseCors();
 app.UseAuthorization();

@@ -81,5 +81,21 @@ namespace SpotifyClone.Controllers.Api
                 Data = savedGenre
             };
         }
+        [HttpGet("all")]
+        public RestResponce GetAllGenres()
+        {
+            var genres = _dataAccessor.GetGenres();
+
+            return new RestResponce
+            {
+                Status = RestStatus.Status200,
+                Meta = new()
+                {
+                    Service = "Spotify. Get all genres.",
+                    ServerTime = DateTime.Now.Ticks
+                },
+                Data = genres
+            };
+        }
     }
 }

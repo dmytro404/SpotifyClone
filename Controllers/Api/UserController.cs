@@ -95,6 +95,31 @@ namespace SpotifyClone.Controllers.Api
             return responce;
         }
 
+        [HttpGet("me")]
+        public RestResponce GetCurrentUser()
+        {
+            var userId = HttpContext.User.FindFirst("id")?.Value;
+            if (userId == null)
+                return new RestResponce { Status = RestStatus.Status401 };
+
+            var user = _dataAccessor.GetUserById(Guid.Parse(userId));
+            if (user == null)
+                return new RestResponce { Status = RestStatus.Status404 };
+
+            return new RestResponce
+            {
+                Status = RestStatus.Status200,
+                Data = new
+                {
+                    user.Id,
+                    user.Name,
+                    user.Email,
+                    user.AvatarUrl
+                }
+            };
+        }
+
+
         public RestResponce Authenticate()
         {
             RestResponce restResponce = new()

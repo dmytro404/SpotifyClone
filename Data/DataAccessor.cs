@@ -31,6 +31,13 @@ namespace SpotifyClone.Data
             return userAccess;
         }
 
+        public User? GetUserById(Guid id)
+        {
+            return _dataContext.Users
+                .AsNoTracking()
+                .FirstOrDefault(u => u.Id == id && u.DeleteAt == null);
+        }
+
         public Genre? AddGenre(Genre genre)
         {
             _dataContext.Genres.Add(genre);
