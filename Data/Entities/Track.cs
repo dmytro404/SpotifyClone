@@ -12,5 +12,7 @@
 
         public List<PlaylistTrack> PlaylistTracks { get; set; } = new();
         public List<Like> Likes { get; set; } = new();
+        public int GenreId { get; set; }
+        public Genre Genre { get; set; }
     }
 }

@@ -19,13 +19,11 @@ namespace SpotifyClone.Data
         {
             #region Relations
 
-            // User - Playlist (1 ко многим)
             modelBuilder.Entity<Playlist>()
                 .HasOne(p => p.User)
                 .WithMany(u => u.Playlists)
                 .HasForeignKey(p => p.UserId);
 
-            // Playlist - Track (многие ко многим через PlaylistTrack)
             modelBuilder.Entity<PlaylistTrack>()
                 .HasKey(pt => new { pt.PlaylistId, pt.TrackId });
 
