@@ -54,8 +54,8 @@ namespace SpotifyClone.Data
 
             modelBuilder.Entity<Album>()
                 .HasMany(a => a.Tracks)
-                .WithOne()
-                .HasForeignKey(t => t.Album);
+                .WithOne(t => t.Album)
+                .HasForeignKey(t => t.AlbumId);
 
             modelBuilder.Entity<Genre>()
                 .HasMany(g => g.Tracks)
@@ -104,7 +104,7 @@ namespace SpotifyClone.Data
                     Name = "admin",
                     Email = "admin@spotifyclone.dev",
                     PasswordHash = "hashed_admin",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = new DateTime(2025, 10, 24)
                 }
             );
 
@@ -115,7 +115,7 @@ namespace SpotifyClone.Data
                     Title = "Default Album",
                     Artist = "System",
                     CoverUrl = "/images/default_cover.png",
-                    ReleaseDate = DateTime.UtcNow
+                    ReleaseDate = new DateTime(2025, 10, 24)
                 }
             );
 

@@ -1,5 +1,4 @@
-﻿using SpotifyClone.Data.Entities;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace SpotifyClone.Data.Entities
 {
@@ -12,7 +11,8 @@ namespace SpotifyClone.Data.Entities
         public DateTime CreatedAt { get; set; }
 
         [JsonIgnore]
-        public ICollection<UserAccess> Accesses { get; set; } = [];
+        public List<UserAccess> Accesses { get; set; } = new();
+
         public List<Playlist> Playlists { get; set; } = new();
         public List<Like> Likes { get; set; } = new();
     }
