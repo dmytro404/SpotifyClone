@@ -1,16 +1,21 @@
 ﻿using SpotifyClone.Data.Entities;
+using Humanizer.Localisation;
 using Microsoft.EntityFrameworkCore;
+using SpotifyClone.Data.Entities;
 
 namespace SpotifyClone.Data
 {
     public class DataContext : DbContext
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<UserAccess> UserAccesses { get; set; }
         public DbSet<Track> Tracks { get; set; }
         public DbSet<Album> Albums { get; set; }
         public DbSet<Playlist> Playlists { get; set; }
         public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
         public DbSet<Like> Likes { get; set; }
+        public DbSet<Genre> Genres { get; set; }
 
         public DataContext(DbContextOptions options) : base(options)
         { }
@@ -52,6 +57,24 @@ namespace SpotifyClone.Data
                 .WithOne()
                 .HasForeignKey(t => t.Album);
 
+            modelBuilder.Entity<Genre>()
+                .HasMany(g => g.Tracks)
+                .WithOne(t => t.Genre)
+                .HasForeignKey(t => t.GenreId);
+
+            modelBuilder.Entity<UserAccess>()
+                .HasOne(ua => ua.User)
+                .WithMany(u => u.Accesses);
+
+            modelBuilder.Entity<UserAccess>()
+                .HasOne(ua => ua.Role)
+                .WithMany()
+                .HasForeignKey(ua => ua.RoleId);
+
+            modelBuilder.Entity<UserAccess>()
+                .HasIndex(ua => ua.Login)
+                .IsUnique();
+
             #endregion
 
             #region Indexes
@@ -66,14 +89,19 @@ namespace SpotifyClone.Data
             modelBuilder.Entity<Album>()
                 .HasIndex(a => a.Title);
 
+            modelBuilder.Entity<Genre>()
+                .HasIndex(g => g.Name)
+                .IsUnique();
+
             #endregion
 
             #region Seed
+
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
                     Id = 1,
-                    Login = "admin",
+                    Name = "admin",
                     Email = "admin@spotifyclone.dev",
                     PasswordHash = "hashed_admin",
                     CreatedAt = DateTime.UtcNow
@@ -88,6 +116,14 @@ namespace SpotifyClone.Data
                     Artist = "System",
                     CoverUrl = "/images/default_cover.png",
                     ReleaseDate = DateTime.UtcNow
+                }
+            );
+
+            modelBuilder.Entity<Genre>().HasData(
+                new Genre
+                {
+                    Id = 1,
+                    Name = "Unknown"
                 }
             );
 

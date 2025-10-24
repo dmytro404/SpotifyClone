@@ -1,14 +1,14 @@
+using Microsoft.EntityFrameworkCore;
 using SpotifyClone.Data;
 using SpotifyClone.Middleware.Auth;
 using SpotifyClone.Services.Auth;
 using SpotifyClone.Services.Kdf;
 using SpotifyClone.Services.Storage;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddSingleton<IKdfService, PbKdf1Service>();
+builder.Services.AddSingleton<IKdfService, PbKdf2Service>();
 
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(
