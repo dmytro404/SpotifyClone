@@ -1,0 +1,134 @@
+﻿@model SpotifyClone.Models.Home.HomeAdminViewModel
+@{
+    ViewData["Title"] = "Admin Panel";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Dashboard</h1>
+</div>
+
+<div class="border m-3 p-3">
+    <h2>Albums</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Tracks</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var album in Model.Albums)
+            {
+                <tr>
+                    <td>@album.Title</td>
+                    <td>@album.Artist</td>
+                    <td>@string.Join(", ", album.Tracks.Select(t => t.Title))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h3>Add Album</h3>
+    <form id="album-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" name="album-title" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Artist</label>
+            <input type="text" name="album-artist" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Cover</label>
+            <input type="file" name="album-cover" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Release Date</label>
+            <input type="date" name="album-release-date" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Add Album</button>
+    </form>
+</div>
+
+<div class="border m-3 p-3">
+    <h2>Tracks</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Album</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var track in Model.Tracks)
+            {
+                <tr>
+                    <td>@track.Title</td>
+                    <td>@track.AlbumTitle</td>
+                    <td>@track.Duration</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h3>Add Track</h3>
+    <form id="track-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" name="track-title" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Artist</label>
+            <input type="text" name="track-artist" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Album</label>
+            <select name="track-album-id" class="form-select" required>
+                @foreach (var album in Model.Albums)
+                {
+                    <option value="@album.Id">@album.Title</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Audio File</label>
+            <input type="file" name="track-file" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Add Track</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        async function submitForm(formId, url) {
+            const form = document.getElementById(formId);
+
+            form.addEventListener("submit", async e => {
+                e.preventDefault();
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (response.ok || data.status === 200) {
+                        alert("Success: " + JSON.stringify(data.data));
+                        form.reset();
+                    } else {
+                        alert("Error: " + JSON.stringify(data.data));
+                    }
+                } catch (err) {
+                    alert("Error: " + err.message);
+                }
+            });
+        }
+
+        submitForm("album-form", "/api/albums/add");
+        submitForm("track-form", "/api/tracks/add");
+    </script>
+}

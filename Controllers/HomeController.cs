@@ -1,32 +1,55 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using SpotifyClone.Models;
+using Microsoft.EntityFrameworkCore;
+using SpotifyClone.Data;
+using SpotifyClone.Data.Entities;
+using SpotifyClone.Models.Home;
+using System.Security.Claims;
 
-namespace SpotifyClone.Controllers
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+    private readonly DataContext _context;
+
+    public HomeController(DataContext context)
     {
-        private readonly ILogger<HomeController> _logger;
+        _context = context;
+    }
 
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
+    public IActionResult Index()
+    {
+        var albums = _context.Albums.ToList();
 
-        public IActionResult Index()
+        var model = new HomeAdminViewModel
         {
-            return View();
-        }
+            Albums = albums
+        };
 
-        public IActionResult Privacy()
-        {
-            return View();
-        }
+        return View(model);
+    }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+    public IActionResult Admin()
+    {
+        var albums = _context.Albums
+            .Include(a => a.Tracks)
+            .ToList();
+
+        var tracks = _context.Tracks
+            .Include(t => t.Album)
+            .Select(t => new TrackAdminViewModel
+            {
+                Id = t.Id,
+                Title = t.Title,
+                AlbumId = t.AlbumId,
+                AlbumTitle = t.Album.Title,
+                Duration = t.Duration
+            })
+            .ToList();
+
+        var model = new HomeAdminViewModel
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+            Albums = albums,
+            Tracks = tracks
+        };
+
+        return View(model);
     }
 }

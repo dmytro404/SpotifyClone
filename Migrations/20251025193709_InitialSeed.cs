@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace SpotifyClone.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class InitialSeed : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -206,19 +208,23 @@ namespace SpotifyClone.Migrations
                 });
 
             migrationBuilder.InsertData(
-                table: "Albums",
-                columns: new[] { "Id", "Artist", "CoverUrl", "ReleaseDate", "Title" },
-                values: new object[] { 1, "System", "/images/default_cover.png", new DateTime(2025, 10, 24, 0, 0, 0, 0, DateTimeKind.Unspecified), "Default Album" });
-
-            migrationBuilder.InsertData(
-                table: "Genres",
-                columns: new[] { "Id", "Name" },
-                values: new object[] { 1, "Unknown" });
+                table: "UserRoles",
+                columns: new[] { "Id", "CanCreate", "CanDelete", "CanRead", "CanUpdate", "Description" },
+                values: new object[,]
+                {
+                    { "Admin", true, true, true, true, "System Root Administrator" },
+                    { "Guest", false, false, false, false, "Self Registered User" }
+                });
 
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "Email", "Name", "PasswordHash" },
-                values: new object[] { 1, new DateTime(2025, 10, 24, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@spotifyclone.dev", "admin", "hashed_admin" });
+                values: new object[] { 1, new DateTime(2025, 10, 25, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@spotifyclone.dev", "Default Administrator", "" });
+
+            migrationBuilder.InsertData(
+                table: "UserAccesses",
+                columns: new[] { "Id", "Dk", "Login", "RoleId", "Salt", "UserId" },
+                values: new object[] { new Guid("09df387c-7050-4b76-9db9-564ec352fd44"), "F06BAC5028A11CE930866DFC16B8521EAE2F29311EE62C3649CD436D33D0AED8", "Admin", "Admin", "4506C746-8FDD-4586-9BF4-95D6933C3B4F", 1 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Albums_Title",

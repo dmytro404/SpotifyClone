@@ -1,7 +1,9 @@
-﻿using SpotifyClone.Data.Entities;
-using Humanizer.Localisation;
+﻿using Humanizer.Localisation;
 using Microsoft.EntityFrameworkCore;
 using SpotifyClone.Data.Entities;
+using SpotifyClone.Data.Entities;
+using SpotifyClone.Services.Kdf;
+using System.Security.Cryptography;
 
 namespace SpotifyClone.Data
 {
@@ -97,36 +99,51 @@ namespace SpotifyClone.Data
 
             #region Seed
 
-            modelBuilder.Entity<User>().HasData(
-                new User
-                {
-                    Id = 1,
-                    Name = "admin",
-                    Email = "admin@spotifyclone.dev",
-                    PasswordHash = "hashed_admin",
-                    CreatedAt = new DateTime(2025, 10, 24)
-                }
-            );
+            modelBuilder.Entity<UserRole>()
+    .HasData(
+        new UserRole
+        {
+            Id = "Admin",
+            Description = "System Root Administrator",
+            CanCreate = true,
+            CanRead = true,
+            CanUpdate = true,
+            CanDelete = true
+        },
+        new UserRole
+        {
+            Id = "Guest",
+            Description = "Self Registered User",
+            CanCreate = false,
+            CanRead = false,
+            CanUpdate = false,
+            CanDelete = false
+        }
+    );
 
-            modelBuilder.Entity<Album>().HasData(
-                new Album
-                {
-                    Id = 1,
-                    Title = "Default Album",
-                    Artist = "System",
-                    CoverUrl = "/images/default_cover.png",
-                    ReleaseDate = new DateTime(2025, 10, 24)
-                }
-            );
+            modelBuilder.Entity<User>()
+                .HasData(
+                    new User
+                    {
+                        Id = 1,
+                        Name = "Default Administrator",
+                        Email = "admin@spotifyclone.dev",
+                        CreatedAt = new DateTime(2025, 10, 25)
+                    }
+                );
 
-            modelBuilder.Entity<Genre>().HasData(
-                new Genre
-                {
-                    Id = 1,
-                    Name = "Unknown"
-                }
-            );
-
+            modelBuilder.Entity<UserAccess>()
+                .HasData(
+                    new UserAccess
+                    {
+                        Id = Guid.Parse("09DF387C-7050-4B76-9DB9-564EC352FD44"),
+                        UserId = 1,
+                        RoleId = "Admin",
+                        Login = "Admin",
+                        Salt = "4506C746-8FDD-4586-9BF4-95D6933C3B4F",
+                        Dk = "F06BAC5028A11CE930866DFC16B8521EAE2F29311EE62C3649CD436D33D0AED8"
+                    }
+                );
             #endregion
         }
     }

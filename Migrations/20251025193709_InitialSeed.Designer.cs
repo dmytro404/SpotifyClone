@@ -12,8 +12,8 @@ using SpotifyClone.Data;
 namespace SpotifyClone.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20251024173412_Init")]
-    partial class Init
+    [Migration("20251025193709_InitialSeed")]
+    partial class InitialSeed
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -53,16 +53,6 @@ namespace SpotifyClone.Migrations
                     b.HasIndex("Title");
 
                     b.ToTable("Albums");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Artist = "System",
-                            CoverUrl = "/images/default_cover.png",
-                            ReleaseDate = new DateTime(2025, 10, 24, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Title = "Default Album"
-                        });
                 });
 
             modelBuilder.Entity("SpotifyClone.Data.Entities.Genre", b =>
@@ -83,13 +73,6 @@ namespace SpotifyClone.Migrations
                         .IsUnique();
 
                     b.ToTable("Genres");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Name = "Unknown"
-                        });
                 });
 
             modelBuilder.Entity("SpotifyClone.Data.Entities.Like", b =>
@@ -242,10 +225,10 @@ namespace SpotifyClone.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 10, 24, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2025, 10, 25, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "admin@spotifyclone.dev",
-                            Name = "admin",
-                            PasswordHash = "hashed_admin"
+                            Name = "Default Administrator",
+                            PasswordHash = ""
                         });
                 });
 
@@ -284,6 +267,17 @@ namespace SpotifyClone.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserAccesses");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("09df387c-7050-4b76-9db9-564ec352fd44"),
+                            Dk = "F06BAC5028A11CE930866DFC16B8521EAE2F29311EE62C3649CD436D33D0AED8",
+                            Login = "Admin",
+                            RoleId = "Admin",
+                            Salt = "4506C746-8FDD-4586-9BF4-95D6933C3B4F",
+                            UserId = 1
+                        });
                 });
 
             modelBuilder.Entity("SpotifyClone.Data.Entities.UserRole", b =>
@@ -310,6 +304,26 @@ namespace SpotifyClone.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "Admin",
+                            CanCreate = true,
+                            CanDelete = true,
+                            CanRead = true,
+                            CanUpdate = true,
+                            Description = "System Root Administrator"
+                        },
+                        new
+                        {
+                            Id = "Guest",
+                            CanCreate = false,
+                            CanDelete = false,
+                            CanRead = false,
+                            CanUpdate = false,
+                            Description = "Self Registered User"
+                        });
                 });
 
             modelBuilder.Entity("SpotifyClone.Data.Entities.Like", b =>

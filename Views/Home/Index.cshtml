@@ -1,8 +1,15 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿@model SpotifyClone.Models.Home.HomeAdminViewModel
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@if (Model?.Albums != null && Model.Albums.Any())
+{
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+        @foreach (var album in Model.Albums)
+        {
+            @Html.DisplayFor(m => album)
+        }
+    </div>
+}
+else
+{
+    <p class="text-center">No albums available.</p>
+}
