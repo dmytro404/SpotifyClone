@@ -9,7 +9,6 @@ namespace SpotifyClone.Data
         private readonly DataContext _dataContext = dataContext;
         private readonly IKdfService _kdfService = kdfService;
 
-        // ---------------- Users ----------------
         public UserAccess? Authenticate(string login, string password)
         {
             var userAccess = _dataContext.UserAccesses
@@ -51,7 +50,6 @@ namespace SpotifyClone.Data
             return user;
         }
 
-        // ---------------- Albums ----------------
         public Album AddAlbum(string title, string artist, string coverUrl, DateTime releaseDate)
         {
             var album = new Album
@@ -72,7 +70,6 @@ namespace SpotifyClone.Data
         public IEnumerable<Album> GetAlbums() =>
             _dataContext.Albums.Include(a => a.Tracks).AsEnumerable();
 
-        // ---------------- Tracks ----------------
         public Track AddTrack(string title, string artist, string url, TimeSpan duration, DateTime releaseDate, int albumId, int genreId)
         {
             var track = new Track

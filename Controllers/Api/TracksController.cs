@@ -23,7 +23,6 @@ namespace SpotifyClone.Controllers.Api
                 return new { status = RestStatus.Status400.Phrase, code = RestStatus.Status400.Code };
             }
 
-            // Проверяем, что альбом существует
             var album = _dataContext.Albums.FirstOrDefault(a => a.Id == model.AlbumId);
             if (album == null)
             {
@@ -45,7 +44,6 @@ namespace SpotifyClone.Controllers.Api
                     using var stream = new FileStream(filePath, FileMode.Create);
                     model.File.CopyTo(stream);
 
-                    // Относительный путь для браузера
                     trackUrl = "/uploads/tracks/" + fileName;
                 }
                 catch (Exception ex)

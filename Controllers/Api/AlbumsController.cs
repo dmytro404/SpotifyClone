@@ -28,7 +28,6 @@ namespace SpotifyClone.Controllers.Api
             {
                 try
                 {
-                    // Папка для загрузок внутри проекта
                     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "albums");
                     Directory.CreateDirectory(uploadsFolder);
 
@@ -38,7 +37,6 @@ namespace SpotifyClone.Controllers.Api
                     using var stream = new FileStream(filePath, FileMode.Create);
                     model.Cover.CopyTo(stream);
 
-                    // Относительный путь для браузера
                     coverUrl = "/uploads/albums/" + fileName;
                 }
                 catch (Exception ex)

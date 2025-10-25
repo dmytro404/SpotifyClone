@@ -48,14 +48,12 @@ namespace SpotifyClone.Controllers.Api
         [HttpPost("signup")]
         public IActionResult SignUp([FromBody] SignUpRequest model)
         {
-            // TODO: Implement sign up
             return Ok(new { Status = "SignUp Works" });
         }
 
         [HttpPost("admin")]
         public IActionResult SignUpAdmin([FromBody] SignUpRequest model)
         {
-            // TODO: Implement admin sign up
             return Ok(new { Status = "SignUpAdmin Works" });
         }
     }
