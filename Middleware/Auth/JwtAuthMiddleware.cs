@@ -76,7 +76,6 @@ namespace SpotifyClone.Middleware.Auth
         }
     }
 
-
     public static class JwtAuthMiddlewareExtensions
     {
         public static IApplicationBuilder UseJwtAuth(

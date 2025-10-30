@@ -14,7 +14,7 @@ namespace SpotifyClone.Controllers
         private readonly DataAccessor _dataAccessor = dataAccessor;
         private readonly IAuthService _authService = authService;
 
-        // GET: /Account/Login (можно для теста)
+        // GET: /Account/Login
         public IActionResult Login() => View();
 
         // POST: /Account/Login
@@ -30,7 +30,6 @@ namespace SpotifyClone.Controllers
                     return RedirectToAction("Index", "Home");
                 }
 
-                // Создаем Claims
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, userAccess.User.Name),

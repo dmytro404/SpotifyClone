@@ -17,5 +17,4 @@ namespace SpotifyClone.Models.Home
         public TimeSpan Duration { get; set; }
     }
 
-
 }

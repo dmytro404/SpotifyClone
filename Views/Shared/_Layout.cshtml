@@ -33,11 +33,14 @@
                         </li>
                     </ul>
                     <div class="d-flex">
-                        @if (Context.User.Identity?.IsAuthenticated ?? false)
+                        @{
+                            var name = Context.Session.GetString("UserName");
+                            var role = Context.Session.GetString("UserRole");
+                            var isAuthenticated = !string.IsNullOrEmpty(name);
+                            var isAdmin = role == "Admin";
+                        }
+                        @if (isAuthenticated)
                         {
-                            var name = Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? "Unknown";
-                            var isAdmin = Context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value == "Admin";
-
                             @if (isAdmin)
                             {
                                 <a asp-controller="Home" asp-action="Admin" class="btn btn-outline-primary me-2">Admin</a>

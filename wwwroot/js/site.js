@@ -15,7 +15,6 @@
 document.addEventListener('submit', e => {
     const form = e.target;
 
-    // Auth form
     if (form.id === 'auth-form') {
         e.preventDefault();
         const formData = new FormData(form);
@@ -42,7 +41,6 @@ document.addEventListener('submit', e => {
             .catch(console.error);
     }
 
-    // Admin Album form
     if (form.id === 'album-form') {
         e.preventDefault();
         fetch("/api/albums/add", {
@@ -57,7 +55,6 @@ document.addEventListener('submit', e => {
             .catch(err => alert("Error: " + err.message));
     }
 
-    // Admin Track form
     if (form.id === 'track-form') {
         e.preventDefault();
         fetch("/api/tracks/add", {

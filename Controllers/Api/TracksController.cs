@@ -34,7 +34,6 @@ namespace SpotifyClone.Controllers.Api
             {
                 try
                 {
-                    // Папка для аудио внутри проекта
                     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tracks");
                     Directory.CreateDirectory(uploadsFolder);
 
