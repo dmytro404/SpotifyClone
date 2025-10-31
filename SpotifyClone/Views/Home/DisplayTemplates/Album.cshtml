@@ -1,0 +1,11 @@
+﻿<div class="col mb-3">
+    <div class="card h-100">
+        <img src="@(!string.IsNullOrEmpty(Model.CoverUrl) ? Model.CoverUrl : "/images/placeholder.jpg")"
+             class="card-img-top" alt="@Model.Title" />
+        <div class="card-body">
+            <h5 class="card-title">@Model.Title</h5>
+            <p class="card-text">Artist: @Model.Artist</p>
+            <p class="card-text">Released: @Model.ReleaseDate.ToShortDateString()</p>
+        </div>
+    </div>
+</div>
