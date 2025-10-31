@@ -23,7 +23,6 @@ namespace SpotifyClone.Migrations
                 oldType: "nvarchar(450)");
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterColumn<string>(
