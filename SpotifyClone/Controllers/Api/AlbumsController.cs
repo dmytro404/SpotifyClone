@@ -70,5 +70,23 @@ namespace SpotifyClone.Controllers.Api
                 return new { status = ex.Message, code = RestStatus.Status500.Code };
             }
         }
+
+        [HttpGet]
+        public IActionResult GetAll()
+        {
+            var albums = _dataContext.Albums
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Title,
+                    a.Artist,
+                    a.CoverUrl,
+                    ReleaseDate = a.ReleaseDate.ToShortDateString()
+                })
+                .ToList();
+
+            return Ok(new { status = new { isOk = true }, data = albums });
+        }
+
     }
 }
