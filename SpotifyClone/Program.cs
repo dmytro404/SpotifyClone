@@ -14,6 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 // MVC + Razor
 builder.Services.AddControllersWithViews();
 
+//Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 // KDF
 builder.Services.AddSingleton<IKdfService, PbKdf2Service>();
 builder.Services.AddDbContext<DataContext>(options =>
@@ -76,6 +80,12 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

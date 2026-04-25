@@ -74,7 +74,7 @@ namespace SpotifyClone.Controllers.Api
         [HttpGet]
         public IActionResult GetAll()
         {
-            var albums = _dataContext.Albums
+            var albums = _dataContext.Albums   
                 .Select(a => new
                 {
                     a.Id,
