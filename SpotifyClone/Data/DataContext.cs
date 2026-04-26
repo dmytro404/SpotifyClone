@@ -134,7 +134,7 @@ namespace SpotifyClone.Data
                     Id = "Guest",
                     Description = "Self Registered User",
                     CanCreate = false,
-                    CanRead = false,
+                    CanRead = true,
                     CanUpdate = false,
                     CanDelete = false
                 }
