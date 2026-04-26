@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using SpotifyClone.Data;
+using SpotifyClone.Data.Entities;
 using SpotifyClone.Middleware.Auth;
 using SpotifyClone.Services.Auth;
 using SpotifyClone.Services.Kdf;
+using SpotifyClone.Services.Search;
 using SpotifyClone.Services.Storage;
 using System.Text;
 
@@ -37,15 +39,17 @@ builder.Services.AddSession(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, SessionAuthService>();
 builder.Services.AddSingleton<IStorageService, DiskStorageService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 
 // CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 

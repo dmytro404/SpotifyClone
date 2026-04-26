@@ -32,12 +32,15 @@ namespace SpotifyClone.Controllers.Api
             if (userAccess == null)
                 return Unauthorized(new { Status = "Invalid credentials" });
 
+            var token = GenerateJwtToken(userAccess);
+
             HttpContext.Session.SetString("UserName", userAccess.User.Name);
             HttpContext.Session.SetString("UserRole", userAccess.RoleId);
 
             return Ok(new
             {
                 Status = "Success",
+                token = token,
                 userName = userAccess.User.Name
             });
         }
@@ -62,7 +65,7 @@ namespace SpotifyClone.Controllers.Api
 
             var token = GenerateJwtToken(userAccess!);
 
-            HttpContext.Session.SetString("UserName", userAccess.User.Name);
+            HttpContext.Session.SetString("UserName", userAccess!.User.Name);
             HttpContext.Session.SetString("UserRole", userAccess.RoleId);
 
             return Ok(new

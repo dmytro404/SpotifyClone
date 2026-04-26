@@ -163,16 +163,16 @@ public class Test1
 
     public class TestAuthService : IAuthService
     {
-        private object? _payload;
+        private object _payload;
 
         public TestAuthService() { }
         public TestAuthService(object payload) => _payload = payload;
 
         public void SetAuth(object payload) => _payload = payload;
 
-        public T? GetAuth<T>() where T : notnull
+        public T GetAuth<T>() where T : notnull
         {
-            return (T?)_payload;
+            return (T)_payload;
         }
         public void RemoveAuth() => _payload = null;
     }

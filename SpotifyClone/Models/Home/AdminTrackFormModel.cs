@@ -16,5 +16,8 @@ namespace SpotifyClone.Models.Home
 
         [FromForm(Name = "track-file")]
         public IFormFile File { get; set; } = null!;
+
+        [FromForm(Name = "track-genre-id")]
+        public int GenreId { get; set; }
     }
 }
