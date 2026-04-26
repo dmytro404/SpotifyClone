@@ -5,9 +5,8 @@ using SpotifyClone.Data;
 using SpotifyClone.Data.Entities;
 using SpotifyClone.Models.Home;
 using SpotifyClone.Models.Rest;
-using SpotifyClone.Services.Auth;
 using SpotifyClone.Services.Search;
-using System.Diagnostics;
+using System.Security.Claims;
 
 namespace SpotifyClone.Controllers.Api
 {
@@ -15,17 +14,26 @@ namespace SpotifyClone.Controllers.Api
     [ApiController]
     public class TracksController(
         DataContext dataContext,
-        ISearchService searchService,
-        IAuthService authService
+        ISearchService searchService
     ) : ControllerBase
     {
         private readonly DataContext _dataContext = dataContext;
 
+        private UserRole? GetCurrentRole()
+        {
+            var roleId = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(roleId)) return null;
+            return _dataContext.UserRoles.FirstOrDefault(r => r.Id == roleId);
+        }
+
         [HttpGet]
         public IActionResult GetAll([FromQuery] string? search)
         {
-            var query = _dataContext.Tracks.AsQueryable();
+            var role = GetCurrentRole();
+            if (role == null || !role.CanRead)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
 
+            var query = _dataContext.Tracks.AsQueryable();
             query = searchService.ApplySearch(query, search, "Title", "Artist");
 
             var data = query.Select(t => new {
@@ -38,12 +46,16 @@ namespace SpotifyClone.Controllers.Api
                 LikesCount = t.Likes.Count
             }).ToList();
 
-            return Ok(new { status = new { isOk = true }, data });
+            return Ok(new { status = RestStatus.Status200, data });
         }
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanRead)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var track = _dataContext.Tracks
                 .Where(t => t.Id == id)
                 .Select(t => new {
@@ -58,32 +70,28 @@ namespace SpotifyClone.Controllers.Api
                 .FirstOrDefault();
 
             if (track == null)
-            {
                 return NotFound(new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code });
-            }
 
-            return Ok(new { status = new { isOk = true }, data = track });
+            return Ok(new { status = RestStatus.Status200, data = track });
         }
 
         [HttpPost("add")]
         public object AddTrack(AdminTrackFormModel model)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanCreate)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             if (model == null || string.IsNullOrEmpty(model.Title) || string.IsNullOrEmpty(model.Artist))
-            {
                 return new { status = RestStatus.Status400.Phrase, code = RestStatus.Status400.Code };
-            }
 
             var albumExists = _dataContext.Albums.Any(a => a.Id == model.AlbumId);
             if (!albumExists)
-            {
                 return new { status = "Album " + RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             var genreExists = _dataContext.Genres.Any(g => g.Id == model.GenreId);
             if (!genreExists)
-            {
                 return new { status = "Genre " + RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             string trackUrl = "";
             TimeSpan duration = TimeSpan.Zero;
@@ -99,16 +107,12 @@ namespace SpotifyClone.Controllers.Api
                     var filePath = Path.Combine(uploadsFolder, fileName);
 
                     using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
                         model.File.CopyTo(stream);
-                    }
 
                     trackUrl = "/uploads/tracks/" + fileName;
 
                     using (var tfile = TagLib.File.Create(filePath))
-                    {
                         duration = tfile.Properties.Duration;
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -136,20 +140,20 @@ namespace SpotifyClone.Controllers.Api
         [HttpPut("update/{id}")]
         public object UpdateTrack(int id, AdminTrackFormModel model)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanUpdate)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var track = _dataContext.Tracks.Find(id);
             if (track == null)
-            {
                 return new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             track.Title = model.Title ?? track.Title;
             track.Artist = model.Artist ?? track.Artist;
             track.AlbumId = model.AlbumId != 0 ? model.AlbumId : track.AlbumId;
 
             if (model.File != null && model.File.Length > 0)
-            {
                 track.Url = SaveTrackFile(model.File);
-            }
 
             try
             {
@@ -165,11 +169,13 @@ namespace SpotifyClone.Controllers.Api
         [HttpDelete("delete/{id}")]
         public object DeleteTrack(int id)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanDelete)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var track = _dataContext.Tracks.Find(id);
             if (track == null)
-            {
                 return new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             _dataContext.Tracks.Remove(track);
 
@@ -187,23 +193,19 @@ namespace SpotifyClone.Controllers.Api
         [HttpPost("like/{id}")]
         public object ToggleLike(int id)
         {
-            var user = authService.GetAuth<User>();
-            if (user == null)
-            {
-                return new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code };
-            }
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (!int.TryParse(userIdStr, out var userId))
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
 
             var like = _dataContext.Likes
-                .FirstOrDefault(l => l.TrackId == id && l.UserId == user.Id);
+                .FirstOrDefault(l => l.TrackId == id && l.UserId == userId);
 
             if (like == null)
-            {
-                _dataContext.Likes.Add(new Like { TrackId = id, UserId = user.Id });
-            }
+                _dataContext.Likes.Add(new Like { TrackId = id, UserId = userId });
             else
-            {
                 _dataContext.Likes.Remove(like);
-            }
 
             try
             {
@@ -219,16 +221,12 @@ namespace SpotifyClone.Controllers.Api
         private string SaveTrackFile(IFormFile? file)
         {
             if (file == null || file.Length == 0) return "";
-
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tracks");
             Directory.CreateDirectory(uploadsFolder);
-
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
             var filePath = Path.Combine(uploadsFolder, fileName);
-
             using var stream = new FileStream(filePath, FileMode.Create);
             file.CopyTo(stream);
-
             return "/uploads/tracks/" + fileName;
         }
     }

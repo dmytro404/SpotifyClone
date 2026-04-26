@@ -2,55 +2,39 @@
 using Microsoft.AspNetCore.Mvc;
 using SpotifyClone.Data;
 using SpotifyClone.Data.Entities;
-using SpotifyClone.Services.Auth;
 using System.Security.Claims;
 
 namespace SpotifyClone.Controllers
 {
-    public class AccountController(
-        DataAccessor dataAccessor,
-        IAuthService authService) : Controller
+    public class AccountController(DataAccessor dataAccessor) : Controller
     {
-        private readonly DataAccessor _dataAccessor = dataAccessor;
-        private readonly IAuthService _authService = authService;
-
-        // GET: /Account/Login
         public IActionResult Login() => View();
 
-        // POST: /Account/Login
         [HttpPost]
         public IActionResult Login([FromForm] string login, [FromForm] string password)
         {
-            try
+            var userAccess = dataAccessor.Authenticate(login, password);
+            if (userAccess == null)
             {
-                UserAccess? userAccess = _dataAccessor.Authenticate(login, password);
-                if (userAccess == null)
-                {
-                    ModelState.AddModelError("", "Invalid login or password");
-                    return RedirectToAction("Index", "Home");
-                }
-
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, userAccess.User.Name),
-                    new Claim(ClaimTypes.Email, userAccess.User.Email),
-                    new Claim(ClaimTypes.Role, userAccess.Role?.Description ?? "User")
-                };
-
-                var identity = new ClaimsIdentity(claims, "Cookie");
-                var principal = new ClaimsPrincipal(identity);
-
-                HttpContext.SignInAsync("Cookie", principal);
-
-                return RedirectToAction("Index", "Home");
+                ModelState.AddModelError("", "Invalid login or password");
+                return View();
             }
-            catch
+
+            var claims = new List<Claim>
             {
-                return RedirectToAction("Index", "Home");
-            }
+                new Claim(ClaimTypes.Name, userAccess.User.Name),
+                new Claim(ClaimTypes.Email, userAccess.User.Email),
+                new Claim(ClaimTypes.Role, userAccess.RoleId)
+            };
+
+            var identity = new ClaimsIdentity(claims, "Cookie");
+            var principal = new ClaimsPrincipal(identity);
+
+            HttpContext.SignInAsync("Cookie", principal);
+
+            return RedirectToAction("Index", "Home");
         }
 
-        // POST: /Account/Logout
         [HttpPost]
         public IActionResult Logout()
         {

@@ -1,10 +1,13 @@
-﻿namespace SpotifyClone.Data.Entities
+﻿using System.Text.Json.Serialization;
+
+namespace SpotifyClone.Data.Entities
 {
     public class UserAccess
     {
         public Guid Id { get; set; }
 
         public int UserId { get; set; }
+        [JsonIgnore]
         public User User { get; set; } = null!;
 
         public string RoleId { get; set; } = null!;

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SpotifyClone.Services.Search;
+using System.Security.Claims;
 
 namespace SpotifyClone.Controllers.Api
 {
@@ -18,11 +19,17 @@ namespace SpotifyClone.Controllers.Api
     {
         private readonly DataContext _dataContext = dataContext;
 
+        private UserRole? GetCurrentRole()
+        {
+            var roleId = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(roleId)) return null;
+            return _dataContext.UserRoles.FirstOrDefault(r => r.Id == roleId);
+        }
+
         [HttpGet]
         public IActionResult GetAll([FromQuery] string? search)
         {
             var query = _dataContext.Albums.AsQueryable();
-
             query = searchService.ApplySearch(query, search, "Title", "Artist");
 
             var data = query.Select(a => new {
@@ -33,12 +40,16 @@ namespace SpotifyClone.Controllers.Api
                 ReleaseDate = a.ReleaseDate.ToShortDateString()
             }).ToList();
 
-            return Ok(new { status = new { isOk = true }, data });
+            return Ok(new { status = RestStatus.Status200, data });
         }
 
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanRead)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var album = _dataContext.Albums
                 .Where(a => a.Id == id)
                 .Select(a => new
@@ -52,23 +63,22 @@ namespace SpotifyClone.Controllers.Api
                 .FirstOrDefault();
 
             if (album == null)
-            {
                 return NotFound(new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code });
-            }
 
-            return Ok(new { status = new { isOk = true }, data = album });
+            return Ok(new { status = RestStatus.Status200, data = album });
         }
 
         [HttpPost("add")]
         public object AddAlbum(AdminAlbumFormModel model)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanCreate)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             if (model == null || string.IsNullOrEmpty(model.Title) || string.IsNullOrEmpty(model.Artist))
-            {
                 return new { status = RestStatus.Status400.Phrase, code = RestStatus.Status400.Code };
-            }
 
             string coverUrl = SaveCover(model.Cover);
-
             var album = new Album
             {
                 Title = model.Title,
@@ -78,16 +88,10 @@ namespace SpotifyClone.Controllers.Api
             };
 
             _dataContext.Albums.Add(album);
-
             try
             {
                 _dataContext.SaveChanges();
-                return new
-                {
-                    status = RestStatus.Status200.Phrase,
-                    code = RestStatus.Status200.Code,
-                    data = new { album.Id, album.Title, album.CoverUrl }
-                };
+                return new { status = RestStatus.Status200.Phrase, code = RestStatus.Status200.Code, data = new { album.Id, album.Title, album.CoverUrl } };
             }
             catch (Exception ex)
             {
@@ -98,20 +102,19 @@ namespace SpotifyClone.Controllers.Api
         [HttpPut("update/{id}")]
         public object UpdateAlbum(int id, AdminAlbumFormModel model)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanUpdate)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var album = _dataContext.Albums.Find(id);
             if (album == null)
-            {
                 return new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             album.Title = model.Title ?? album.Title;
             album.Artist = model.Artist ?? album.Artist;
             album.ReleaseDate = model.ReleaseDate;
-
             if (model.Cover != null && model.Cover.Length > 0)
-            {
                 album.CoverUrl = SaveCover(model.Cover);
-            }
 
             try
             {
@@ -127,14 +130,15 @@ namespace SpotifyClone.Controllers.Api
         [HttpDelete("delete/{id}")]
         public object DeleteAlbum(int id)
         {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanDelete)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
             var album = _dataContext.Albums.Find(id);
             if (album == null)
-            {
                 return new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
-            }
 
             _dataContext.Albums.Remove(album);
-
             try
             {
                 _dataContext.SaveChanges();
@@ -149,16 +153,12 @@ namespace SpotifyClone.Controllers.Api
         private string SaveCover(IFormFile? cover)
         {
             if (cover == null || cover.Length == 0) return "";
-
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "albums");
             Directory.CreateDirectory(uploadsFolder);
-
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(cover.FileName);
             var filePath = Path.Combine(uploadsFolder, fileName);
-
             using var stream = new FileStream(filePath, FileMode.Create);
             cover.CopyTo(stream);
-
             return "/uploads/albums/" + fileName;
         }
     }

@@ -34,9 +34,9 @@
                     </ul>
                     <div class="d-flex">
                         @{
-                            var name = Context.Session.GetString("UserName");
-                            var role = Context.Session.GetString("UserRole");
-                            var isAuthenticated = !string.IsNullOrEmpty(name);
+                            var name = User.FindFirst(ClaimTypes.Name)?.Value;
+                            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+                            var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
                             var isAdmin = role == "Admin";
                         }
                         @if (isAuthenticated)

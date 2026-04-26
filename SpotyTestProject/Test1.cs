@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -7,13 +6,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SpotifyClone.Data;
 using SpotifyClone.Data.Entities;
 using SpotifyClone.Middleware.Auth;
-using SpotifyClone.Services.Auth;
 using SpotifyClone.Services.Kdf;
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 [TestClass]
@@ -34,6 +32,28 @@ public class Test1
         _kdfService = new PbKdf2Service();
         _accessor = new DataAccessor(_context, _kdfService);
 
+        _context.UserRoles.AddRange(
+            new UserRole
+            {
+                Id = "Admin",
+                Description = "Administrator",
+                CanCreate = true,
+                CanRead = true,
+                CanUpdate = true,
+                CanDelete = true
+            },
+            new UserRole
+            {
+                Id = "Guest",
+                Description = "Guest",
+                CanCreate = false,
+                CanRead = false,
+                CanUpdate = false,
+                CanDelete = false
+            }
+        );
+        _context.SaveChanges();
+
         _accessor.CreateUser("Default Administrator", "admin@test.dev", "Admin", "Admin", "Admin");
 
         if (!_context.Genres.Any())
@@ -52,11 +72,58 @@ public class Test1
     }
 
     [TestMethod]
+    public void TestPbKdf2Service_SameSaltSameResult()
+    {
+        var dk1 = _kdfService.Dk("password", "salt");
+        var dk2 = _kdfService.Dk("password", "salt");
+        Assert.AreEqual(dk1, dk2);
+    }
+
+    [TestMethod]
+    public void TestPbKdf2Service_DifferentSaltDifferentResult()
+    {
+        var dk1 = _kdfService.Dk("password", "salt1");
+        var dk2 = _kdfService.Dk("password", "salt2");
+        Assert.AreNotEqual(dk1, dk2);
+    }
+
+    [TestMethod]
     public void TestAuthenticate_ValidUser_ReturnsUserAccess()
     {
         var userAccess = _accessor.Authenticate("Admin", "Admin");
         Assert.IsNotNull(userAccess);
         Assert.AreEqual("Admin", userAccess.RoleId);
+    }
+
+    [TestMethod]
+    public void TestAuthenticate_WrongPassword_ReturnsNull()
+    {
+        var userAccess = _accessor.Authenticate("Admin", "WrongPassword");
+        Assert.IsNull(userAccess);
+    }
+
+    [TestMethod]
+    public void TestAuthenticate_UnknownLogin_ReturnsNull()
+    {
+        var userAccess = _accessor.Authenticate("nobody", "Admin");
+        Assert.IsNull(userAccess);
+    }
+
+    [TestMethod]
+    public void TestAuthenticate_LoadsRole()
+    {
+        var userAccess = _accessor.Authenticate("Admin", "Admin");
+        Assert.IsNotNull(userAccess?.Role);
+        Assert.IsTrue(userAccess!.Role.CanRead);
+        Assert.IsTrue(userAccess.Role.CanCreate);
+    }
+
+    [TestMethod]
+    public void TestAuthenticate_LoadsUser()
+    {
+        var userAccess = _accessor.Authenticate("Admin", "Admin");
+        Assert.IsNotNull(userAccess?.User);
+        Assert.AreEqual("Default Administrator", userAccess!.User.Name);
     }
 
     [TestMethod]
@@ -83,19 +150,25 @@ public class Test1
     }
 
     [TestMethod]
+    public void TestGetAlbums_ReturnsAll()
+    {
+        _accessor.AddAlbum("A1", "Artist1", "", DateTime.Now);
+        _accessor.AddAlbum("A2", "Artist2", "", DateTime.Now);
+
+        var albums = _accessor.GetAlbums().ToList();
+        Assert.IsTrue(albums.Count >= 2);
+    }
+
+    [TestMethod]
     public void TestAddTrack_GetTrack()
     {
         var album = _accessor.AddAlbum("Album2", "Artist2", "cover2.jpg", DateTime.Now);
         var genre = _context.Genres.First();
 
         var track = _accessor.AddTrack(
-            "Track1",
-            "Artist1",
-            "url1.mp3",
-            TimeSpan.FromMinutes(3),
-            DateTime.Now,
-            album.Id,
-            genre.Id
+            "Track1", "Artist1", "url1.mp3",
+            TimeSpan.FromMinutes(3), DateTime.Now,
+            album.Id, genre.Id
         );
 
         Assert.IsNotNull(track);
@@ -107,73 +180,112 @@ public class Test1
         Assert.AreEqual(genre.Id, fetched.GenreId);
     }
 
-    [TestMethod]
-    public void TestJwtAuthMiddleware_ValidToken_SetsUser()
+    private static (string token, IConfiguration config) MakeJwt(
+        string secret = "ThisIsASecretKey1234567890123456",
+        string role = "Admin",
+        string name = "Default Administrator",
+        string userId = "1")
     {
-        var secret = "ThisIsASecretKey123";
-        var payload = new { sub = "1", name = "Admin", aud = "Admin" };
-        var payloadJson = JsonSerializer.Serialize(payload);
-        var payloadBase64 = Base64UrlTextEncoder.Encode(Encoding.UTF8.GetBytes(payloadJson));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(JwtRegisteredClaimNames.Name, name),
+            new Claim(ClaimTypes.Role, role)
+        };
 
-        var headerBase64 = Base64UrlTextEncoder.Encode(Encoding.UTF8.GetBytes("{}"));
-        var tokenBody = $"{headerBase64}.{payloadBase64}";
-        var signature = Base64UrlTextEncoder.Encode(
-            System.Security.Cryptography.HMACSHA256.HashData(
-                Encoding.UTF8.GetBytes(secret),
-                Encoding.UTF8.GetBytes(tokenBody)
-            )
+        var token = new JwtSecurityToken(
+            issuer: "ASP-32",
+            audience: "ASP-32",
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         );
-        var jwt = $"{tokenBody}.{signature}";
 
-        var context = new DefaultHttpContext();
-        context.Request.Headers["Authorization"] = $"Bearer {jwt}";
+        var tokenStr = new JwtSecurityTokenHandler().WriteToken(token);
 
-        var configuration = new ConfigurationBuilder()
+        var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string>
             {
                 ["Jwt:Secret"] = secret
             })
             .Build();
 
-        var middleware = new JwtAuthMiddleware(next: (ctx) => Task.CompletedTask);
-        middleware.InvokeAsync(context, configuration).Wait();
-
-        Assert.IsTrue(context.User.Identity?.IsAuthenticated ?? false);
-        Assert.AreEqual("Admin", context.User.FindFirst(ClaimTypes.Role)?.Value);
-        Assert.AreEqual("Admin", context.User.FindFirst(ClaimTypes.Name)?.Value);
+        return (tokenStr, config);
     }
 
     [TestMethod]
-    public void TestSessionAuthMiddleware_SetsUser()
+    public void TestJwtAuthMiddleware_ValidToken_SetsUser()
     {
-        var userAccess = _context.UserAccesses
-            .Include(ua => ua.User)
-            .FirstOrDefault(ua => ua.Login == "Admin")!;
+        var (token, config) = MakeJwt();
 
         var context = new DefaultHttpContext();
-        var middleware = new SessionAuthMiddleware(next: (ctx) => Task.CompletedTask);
+        context.Request.Headers["Authorization"] = $"Bearer {token}";
 
-        var authService = new TestAuthService(userAccess);
-        middleware.InvokeAsync(context, authService).Wait();
+        var middleware = new JwtAuthMiddleware(next: _ => Task.CompletedTask);
+        middleware.InvokeAsync(context, config).Wait();
 
         Assert.IsTrue(context.User.Identity?.IsAuthenticated ?? false);
         Assert.AreEqual("Admin", context.User.FindFirst(ClaimTypes.Role)?.Value);
-        Assert.AreEqual("Default Administrator", context.User.FindFirst(ClaimTypes.Name)?.Value);
+        Assert.AreEqual("Default Administrator", context.User.FindFirst(ClaimTypes.Name)?.Value
+                                              ?? context.User.FindFirst(JwtRegisteredClaimNames.Name)?.Value);
     }
 
-    public class TestAuthService : IAuthService
+    [TestMethod]
+    public void TestJwtAuthMiddleware_NoToken_UserNotAuthenticated()
     {
-        private object _payload;
+        var (_, config) = MakeJwt();
 
-        public TestAuthService() { }
-        public TestAuthService(object payload) => _payload = payload;
+        var context = new DefaultHttpContext();
 
-        public void SetAuth(object payload) => _payload = payload;
+        var middleware = new JwtAuthMiddleware(next: _ => Task.CompletedTask);
+        middleware.InvokeAsync(context, config).Wait();
 
-        public T GetAuth<T>() where T : notnull
-        {
-            return (T)_payload;
-        }
-        public void RemoveAuth() => _payload = null;
+        Assert.IsFalse(context.User.Identity?.IsAuthenticated ?? false);
+    }
+
+    [TestMethod]
+    public void TestJwtAuthMiddleware_InvalidToken_UserNotAuthenticated()
+    {
+        var (_, config) = MakeJwt();
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["Authorization"] = "Bearer this.is.invalid";
+
+        var middleware = new JwtAuthMiddleware(next: _ => Task.CompletedTask);
+        middleware.InvokeAsync(context, config).Wait();
+
+        Assert.IsFalse(context.User.Identity?.IsAuthenticated ?? false);
+    }
+
+    [TestMethod]
+    public void TestJwtAuthMiddleware_ExpiredToken_UserNotAuthenticated()
+    {
+        var secret = "ThisIsASecretKey12345678901234567890";
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+
+        var token = new JwtSecurityToken(
+            issuer: "ASP-32",
+            audience: "ASP-32",
+            claims: new[] { new Claim(ClaimTypes.Role, "Admin") },
+            expires: DateTime.UtcNow.AddHours(-1),  // уже истёк
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+        );
+
+        var tokenStr = new JwtSecurityTokenHandler().WriteToken(token);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["Jwt:Secret"] = secret
+            })
+            .Build();
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["Authorization"] = $"Bearer {tokenStr}";
+
+        var middleware = new JwtAuthMiddleware(next: _ => Task.CompletedTask);
+        middleware.InvokeAsync(context, config).Wait();
+
+        Assert.IsFalse(context.User.Identity?.IsAuthenticated ?? false);
     }
 }

@@ -2,7 +2,6 @@
 using Microsoft.IdentityModel.Tokens;
 using SpotifyClone.Data;
 using SpotifyClone.Data.Entities;
-using SpotifyClone.Models.Api;
 using SpotifyClone.Services.Kdf;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -12,61 +11,47 @@ namespace SpotifyClone.Controllers.Api
 {
     [Route("api/user")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class UserController(
+        DataAccessor dataAccessor,
+        IKdfService kdfService,
+        IConfiguration configuration
+    ) : ControllerBase
     {
-        private readonly DataAccessor _dataAccessor;
-        private readonly IKdfService _kdfService;
-        private readonly IConfiguration _configuration;
-
-        public UserController(DataAccessor dataAccessor, IKdfService kdfService, IConfiguration configuration)
-        {
-            _dataAccessor = dataAccessor;
-            _kdfService = kdfService;
-            _configuration = configuration;
-        }
-
         [HttpPost("login")]
         public IActionResult Login([FromBody] UserLoginRequest model)
         {
-            var userAccess = _dataAccessor.Authenticate(model.Login, model.Password);
+            var userAccess = dataAccessor.Authenticate(model.Login, model.Password);
             if (userAccess == null)
-                return Unauthorized(new { Status = "Invalid credentials" });
+                return Unauthorized(new { status = "Invalid credentials" });
 
             var token = GenerateJwtToken(userAccess);
 
-            HttpContext.Session.SetString("UserName", userAccess.User.Name);
-            HttpContext.Session.SetString("UserRole", userAccess.RoleId);
-
             return Ok(new
             {
-                Status = "Success",
-                token = token,
-                userName = userAccess.User.Name
+                status = "Success",
+                token,
+                userName = userAccess.User.Name,
+                role = userAccess.RoleId
             });
         }
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            HttpContext.Session.Remove("UserName");
-            return Ok(new { Status = "Logged out" });
+            return Ok(new { status = "Logged out" });
         }
-
 
         [HttpPost("signup")]
         public IActionResult SignUp([FromBody] UserSignUpRequest model)
         {
-            var existingByLogin = _dataAccessor.Authenticate(model.Login, model.Password);
+            var existingByLogin = dataAccessor.Authenticate(model.Login, model.Password);
             if (existingByLogin != null)
-                return BadRequest(new { Status = "Login already exists" });
+                return BadRequest(new { status = "Login already exists" });
 
-            var user = _dataAccessor.CreateUser(model.Name, model.Email, model.Login, model.Password, "user");
-            var userAccess = _dataAccessor.Authenticate(model.Login, model.Password);
+            var user = dataAccessor.CreateUser(model.Name, model.Email, model.Login, model.Password, "Guest");
+            var userAccess = dataAccessor.Authenticate(model.Login, model.Password);
 
             var token = GenerateJwtToken(userAccess!);
-
-            HttpContext.Session.SetString("UserName", userAccess!.User.Name);
-            HttpContext.Session.SetString("UserRole", userAccess.RoleId);
 
             return Ok(new
             {
@@ -80,7 +65,7 @@ namespace SpotifyClone.Controllers.Api
 
         private string GenerateJwtToken(UserAccess userAccess)
         {
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"]);
+            var key = Encoding.UTF8.GetBytes(configuration["Jwt:Secret"]!);
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userAccess.UserId.ToString()),

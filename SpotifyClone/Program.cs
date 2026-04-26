@@ -2,10 +2,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using SpotifyClone.Data;
-using SpotifyClone.Data.Entities;
 using SpotifyClone.Middleware.Auth;
-using SpotifyClone.Services.Auth;
 using SpotifyClone.Services.Kdf;
 using SpotifyClone.Services.Search;
 using SpotifyClone.Services.Storage;
@@ -18,7 +17,28 @@ builder.Services.AddControllersWithViews();
 
 //Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "¬вед≥ть отриманий токен"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // KDF
 builder.Services.AddSingleton<IKdfService, PbKdf2Service>();
@@ -27,17 +47,8 @@ builder.Services.AddDbContext<DataContext>(options =>
 );
 builder.Services.AddScoped<DataAccessor>();
 
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(10);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
-
 // HTTP
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IAuthService, SessionAuthService>();
 builder.Services.AddSingleton<IStorageService, DiskStorageService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 
@@ -74,6 +85,11 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = "ASP-32",
         IssuerSigningKey = new SymmetricSecurityKey(key)
     };
+})
+.AddCookie("Cookie", options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
 });
 
 builder.Services.AddAuthorization();
@@ -103,8 +119,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseRouting();
 app.UseCors();
 
-app.UseSession();
-app.UseSessionAuth();
+app.UseJwtAuth();
 app.UseAuthentication();
 app.UseAuthorization();
 
