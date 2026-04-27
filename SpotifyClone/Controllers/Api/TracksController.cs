@@ -26,6 +26,34 @@ namespace SpotifyClone.Controllers.Api
             return _dataContext.UserRoles.FirstOrDefault(r => r.Id == roleId);
         }
 
+        private int ResolveGenreId(int requestedGenreId)
+        {
+            if (requestedGenreId != 0 && _dataContext.Genres.Any(g => g.Id == requestedGenreId))
+                return requestedGenreId;
+
+            var existingGenre = _dataContext.Genres.OrderBy(g => g.Id).FirstOrDefault();
+            if (existingGenre != null) return existingGenre.Id;
+
+            var defaultGenre = new Genre { Name = "Uncategorized" };
+            _dataContext.Genres.Add(defaultGenre);
+            _dataContext.SaveChanges();
+            return defaultGenre.Id;
+        }
+
+        private static object ToTrackResponse(Track track) => new
+        {
+            track.Id,
+            track.Title,
+            track.Artist,
+            track.Url,
+            track.Duration,
+            track.AlbumId,
+            AlbumTitle = track.Album?.Title,
+            track.GenreId,
+            GenreName = track.Genre?.Name,
+            LikesCount = track.Likes?.Count ?? 0
+        };
+
         [HttpGet]
         public IActionResult GetAll([FromQuery] string? search)
         {
@@ -33,18 +61,26 @@ namespace SpotifyClone.Controllers.Api
             if (role == null || !role.CanRead)
                 return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
 
-            var query = _dataContext.Tracks.AsQueryable();
+            var query = _dataContext.Tracks
+                .Include(t => t.Album)
+                .Include(t => t.Genre)
+                .Include(t => t.Likes)
+                .AsQueryable();
             query = searchService.ApplySearch(query, search, "Title", "Artist");
 
             var data = query.Select(t => new {
-                t.Id,
-                t.Title,
-                t.Artist,
-                t.Url,
-                t.Duration,
-                t.AlbumId,
-                LikesCount = t.Likes.Count
-            }).ToList();
+                    t.Id,
+                    t.Title,
+                    t.Artist,
+                    t.Url,
+                    t.Duration,
+                    t.AlbumId,
+                    AlbumTitle = t.Album.Title,
+                    t.GenreId,
+                    GenreName = t.Genre.Name,
+                    LikesCount = t.Likes.Count
+                })
+                .ToList();
 
             return Ok(new { status = RestStatus.Status200, data });
         }
@@ -57,6 +93,9 @@ namespace SpotifyClone.Controllers.Api
                 return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
 
             var track = _dataContext.Tracks
+                .Include(t => t.Album)
+                .Include(t => t.Genre)
+                .Include(t => t.Likes)
                 .Where(t => t.Id == id)
                 .Select(t => new {
                     t.Id,
@@ -65,6 +104,9 @@ namespace SpotifyClone.Controllers.Api
                     t.Url,
                     t.Duration,
                     t.AlbumId,
+                    AlbumTitle = t.Album.Title,
+                    t.GenreId,
+                    GenreName = t.Genre.Name,
                     LikesCount = t.Likes.Count
                 })
                 .FirstOrDefault();
@@ -89,9 +131,7 @@ namespace SpotifyClone.Controllers.Api
             if (!albumExists)
                 return new { status = "Album " + RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
 
-            var genreExists = _dataContext.Genres.Any(g => g.Id == model.GenreId);
-            if (!genreExists)
-                return new { status = "Genre " + RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
+            var genreId = ResolveGenreId(model.GenreId);
 
             string trackUrl = "";
             TimeSpan duration = TimeSpan.Zero;
@@ -125,7 +165,7 @@ namespace SpotifyClone.Controllers.Api
                 Title = model.Title,
                 Artist = model.Artist,
                 AlbumId = model.AlbumId,
-                GenreId = model.GenreId,
+                GenreId = genreId,
                 Url = trackUrl,
                 ReleaseDate = DateTime.Now,
                 Duration = duration
@@ -133,8 +173,10 @@ namespace SpotifyClone.Controllers.Api
 
             _dataContext.Tracks.Add(track);
             _dataContext.SaveChanges();
+            _dataContext.Entry(track).Reference(t => t.Album).Load();
+            _dataContext.Entry(track).Reference(t => t.Genre).Load();
 
-            return new { status = RestStatus.Status200.Phrase, code = RestStatus.Status200.Code, data = track };
+            return new { status = RestStatus.Status200.Phrase, code = RestStatus.Status200.Code, data = ToTrackResponse(track) };
         }
 
         [HttpPut("update/{id}")]
@@ -148,9 +190,20 @@ namespace SpotifyClone.Controllers.Api
             if (track == null)
                 return new { status = RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
 
-            track.Title = model.Title ?? track.Title;
-            track.Artist = model.Artist ?? track.Artist;
-            track.AlbumId = model.AlbumId != 0 ? model.AlbumId : track.AlbumId;
+            if (!string.IsNullOrWhiteSpace(model.Title)) track.Title = model.Title;
+            if (!string.IsNullOrWhiteSpace(model.Artist)) track.Artist = model.Artist;
+
+            if (model.AlbumId != 0)
+            {
+                var albumExists = _dataContext.Albums.Any(a => a.Id == model.AlbumId);
+                if (!albumExists)
+                    return new { status = "Album " + RestStatus.Status404.Phrase, code = RestStatus.Status404.Code };
+
+                track.AlbumId = model.AlbumId;
+            }
+
+            if (model.GenreId != 0)
+                track.GenreId = ResolveGenreId(model.GenreId);
 
             if (model.File != null && model.File.Length > 0)
                 track.Url = SaveTrackFile(model.File);
@@ -158,7 +211,9 @@ namespace SpotifyClone.Controllers.Api
             try
             {
                 _dataContext.SaveChanges();
-                return new { status = RestStatus.Status200.Phrase, code = RestStatus.Status200.Code };
+                _dataContext.Entry(track).Reference(t => t.Album).Load();
+                _dataContext.Entry(track).Reference(t => t.Genre).Load();
+                return new { status = RestStatus.Status200.Phrase, code = RestStatus.Status200.Code, data = ToTrackResponse(track) };
             }
             catch (Exception ex)
             {

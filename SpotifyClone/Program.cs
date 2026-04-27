@@ -112,7 +112,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider("C:/storage/ASP32/"),
+    FileProvider = new PhysicalFileProvider("D:/STORAGE/ASP32/"),
     RequestPath = "/storage"
 });
 

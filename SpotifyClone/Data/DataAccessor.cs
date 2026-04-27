@@ -9,13 +9,23 @@ namespace SpotifyClone.Data
         private readonly DataContext _dataContext = dataContext;
         private readonly IKdfService _kdfService = kdfService;
 
-        public UserAccess? Authenticate(string login, string password)
+        public UserAccess? GetUserAccessByLogin(string login)
         {
-            var userAccess = _dataContext.UserAccesses
+            if (string.IsNullOrWhiteSpace(login)) return null;
+
+            return _dataContext.UserAccesses
                 .Include(ua => ua.User)
                 .Include(ua => ua.Role)
                 .AsTracking()
-                .FirstOrDefault(ua => ua.Login == login);
+                .FirstOrDefault(ua => ua.Login == login.Trim());
+        }
+
+        public bool LoginExists(string login) =>
+            !string.IsNullOrWhiteSpace(login) && _dataContext.UserAccesses.Any(ua => ua.Login == login.Trim());
+
+        public UserAccess? Authenticate(string login, string password)
+        {
+            var userAccess = GetUserAccessByLogin(login);
 
             if (userAccess == null) return null;
 
@@ -27,13 +37,26 @@ namespace SpotifyClone.Data
         public User CreateUser(string name, string email, string login, string password, string roleId)
         {
             var role = _dataContext.UserRoles.FirstOrDefault(r => r.Id == roleId);
-            if (role == null) role = new UserRole { Id = roleId, Description = roleId };
+            if (role == null)
+            {
+                role = new UserRole
+                {
+                    Id = roleId,
+                    Description = roleId,
+                    CanRead = roleId == "Guest"
+                };
+            }
+            else if (roleId == "Guest" && !role.CanRead)
+            {
+                role.CanRead = true;
+            }
+
             if (!_dataContext.UserRoles.Any(r => r.Id == roleId)) _dataContext.UserRoles.Add(role);
 
             var salt = Guid.NewGuid().ToString();
             var dk = _kdfService.Dk(password, salt);
 
-            var user = new User { Name = name, Email = email, CreatedAt = DateTime.Now };
+            var user = new User { Name = name.Trim(), Email = email.Trim(), CreatedAt = DateTime.Now };
             _dataContext.Users.Add(user);
             _dataContext.SaveChanges();
 
@@ -42,7 +65,7 @@ namespace SpotifyClone.Data
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 RoleId = roleId,
-                Login = login,
+                Login = login.Trim(),
                 Salt = salt,
                 Dk = dk
             };

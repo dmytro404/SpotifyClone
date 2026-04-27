@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SpotifyClone.Data;
 using SpotifyClone.Data.Entities;
-using SpotifyClone.Services.Kdf;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,14 +13,17 @@ namespace SpotifyClone.Controllers.Api
     [ApiController]
     public class UserController(
         DataAccessor dataAccessor,
-        IKdfService kdfService,
         IConfiguration configuration
     ) : ControllerBase
     {
         [HttpPost("login")]
         public IActionResult Login([FromBody] UserLoginRequest model)
         {
-            var userAccess = dataAccessor.Authenticate(model.Login, model.Password);
+            if (model == null || string.IsNullOrWhiteSpace(model.Login) || string.IsNullOrWhiteSpace(model.Password))
+                return BadRequest(new { status = "Login and password are required" });
+
+            var login = model.Login.Trim();
+            var userAccess = dataAccessor.Authenticate(login, model.Password);
             if (userAccess == null)
                 return Unauthorized(new { status = "Invalid credentials" });
 
@@ -30,7 +33,10 @@ namespace SpotifyClone.Controllers.Api
             {
                 status = "Success",
                 token,
+                userId = userAccess.UserId,
                 userName = userAccess.User.Name,
+                email = userAccess.User.Email,
+                login,
                 role = userAccess.RoleId
             });
         }
@@ -44,22 +50,49 @@ namespace SpotifyClone.Controllers.Api
         [HttpPost("signup")]
         public IActionResult SignUp([FromBody] UserSignUpRequest model)
         {
-            var existingByLogin = dataAccessor.Authenticate(model.Login, model.Password);
-            if (existingByLogin != null)
+            if (
+                model == null ||
+                string.IsNullOrWhiteSpace(model.Name) ||
+                string.IsNullOrWhiteSpace(model.Email) ||
+                string.IsNullOrWhiteSpace(model.Login) ||
+                string.IsNullOrWhiteSpace(model.Password)
+            )
+            {
+                return BadRequest(new { status = "Name, email, login, and password are required" });
+            }
+
+            var login = model.Login.Trim();
+            if (dataAccessor.LoginExists(login))
                 return BadRequest(new { status = "Login already exists" });
 
-            var user = dataAccessor.CreateUser(model.Name, model.Email, model.Login, model.Password, "Guest");
-            var userAccess = dataAccessor.Authenticate(model.Login, model.Password);
+            User user;
+            UserAccess? userAccess;
 
-            var token = GenerateJwtToken(userAccess!);
+            try
+            {
+                user = dataAccessor.CreateUser(model.Name, model.Email, login, model.Password, "Guest");
+                userAccess = dataAccessor.Authenticate(login, model.Password);
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest(new { status = "Login already exists" });
+            }
+
+            if (userAccess == null)
+                return StatusCode(500, new { status = "User was created but authentication failed" });
+
+            var token = GenerateJwtToken(userAccess);
 
             return Ok(new
             {
+                status = "Success",
                 token,
                 userId = user.Id,
+                userName = user.Name,
                 name = user.Name,
                 email = user.Email,
-                role = userAccess!.RoleId
+                login,
+                role = userAccess.RoleId
             });
         }
 
