@@ -25,8 +25,7 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.Http,
         Scheme = "Bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "¬вед≥ть отриманий токен"
+        In = ParameterLocation.Header
     });
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {

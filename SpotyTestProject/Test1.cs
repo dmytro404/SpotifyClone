@@ -63,6 +63,8 @@ public class Test1
         }
     }
 
+    // KDF
+
     [TestMethod]
     public void TestPbKdf2Service_Dk()
     {
@@ -86,6 +88,8 @@ public class Test1
         var dk2 = _kdfService.Dk("password", "salt2");
         Assert.AreNotEqual(dk1, dk2);
     }
+
+    // Auth
 
     [TestMethod]
     public void TestAuthenticate_ValidUser_ReturnsUserAccess()
@@ -118,6 +122,8 @@ public class Test1
         Assert.IsTrue(userAccess.Role.CanCreate);
     }
 
+    // User
+
     [TestMethod]
     public void TestAuthenticate_LoadsUser()
     {
@@ -137,6 +143,8 @@ public class Test1
         Assert.AreEqual("testuser", auth.Login);
         Assert.AreEqual("Guest", auth.RoleId);
     }
+
+    // Album
 
     [TestMethod]
     public void TestAddAlbum_GetAlbum()
@@ -158,6 +166,8 @@ public class Test1
         var albums = _accessor.GetAlbums().ToList();
         Assert.IsTrue(albums.Count >= 2);
     }
+
+    // Tracks
 
     [TestMethod]
     public void TestAddTrack_GetTrack()
@@ -214,6 +224,8 @@ public class Test1
         return (tokenStr, config);
     }
 
+    // JWT
+
     [TestMethod]
     public void TestJwtAuthMiddleware_ValidToken_SetsUser()
     {
@@ -268,7 +280,7 @@ public class Test1
             issuer: "ASP-32",
             audience: "ASP-32",
             claims: new[] { new Claim(ClaimTypes.Role, "Admin") },
-            expires: DateTime.UtcNow.AddHours(-1),  // уже истёк
+            expires: DateTime.UtcNow.AddHours(-1),  // уже истек
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         );
 
