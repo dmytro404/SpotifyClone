@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SpotifyClone.Data;
@@ -245,6 +245,44 @@ namespace SpotifyClone.Controllers.Api
             }
         }
 
+        [HttpGet("liked")]
+        public IActionResult GetLikedTracks()
+        {
+            var role = GetCurrentRole();
+            if (role == null || !role.CanRead)
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (!int.TryParse(userIdStr, out var userId))
+                return Unauthorized(new { status = RestStatus.Status401.Phrase, code = RestStatus.Status401.Code });
+
+            var data = _dataContext.Likes
+                .Where(l => l.UserId == userId)
+                .OrderByDescending(l => l.CreatedAt)
+                .ThenByDescending(l => l.Id)
+                .Select(l => new {
+                    l.Track.Id,
+                    l.Track.Title,
+                    l.Track.Artist,
+                    l.Track.Url,
+                    l.Track.Duration,
+                    l.Track.AlbumId,
+                    AlbumTitle = l.Track.Album.Title,
+                    l.Track.GenreId,
+                    GenreName = l.Track.Genre.Name,
+                    LikesCount = l.Track.Likes.Count
+                })
+                .ToList();
+
+            return Ok(new
+            {
+                status = RestStatus.Status200,
+                trackIds = data.Select(t => t.Id).ToList(),
+                data
+            });
+        }
         [HttpPost("like/{id}")]
         public object ToggleLike(int id)
         {
@@ -258,7 +296,7 @@ namespace SpotifyClone.Controllers.Api
                 .FirstOrDefault(l => l.TrackId == id && l.UserId == userId);
 
             if (like == null)
-                _dataContext.Likes.Add(new Like { TrackId = id, UserId = userId });
+                _dataContext.Likes.Add(new Like { TrackId = id, UserId = userId, CreatedAt = DateTime.Now });
             else
                 _dataContext.Likes.Remove(like);
 
