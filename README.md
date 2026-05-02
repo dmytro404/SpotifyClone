@@ -19,6 +19,7 @@ SpotifyClone is a web application that replicates the core functionalities of Sp
 - React  
 - Vite  
 - CSS
+- Bootstrap
 
 **Backend:**  
 - ASP.NET MVC  
